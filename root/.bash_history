@@ -1,0 +1,4 @@
+psswd
+psswrd
+passwd
+exit
