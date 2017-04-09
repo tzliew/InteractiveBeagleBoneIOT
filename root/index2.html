@@ -4,7 +4,7 @@
 <style>
 div.container {
     width: 60%;
-    margin-left: 240px;
+    left: 20%;
     border: 1px solid gray;
     box-shadow: 1px 1px 1px 1px;
 }
@@ -64,6 +64,7 @@ label {
 </style>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.7.5/firebase.js"></script>
 </head>
 <!-- the body of the HTML is used to print out a nice table with two check boxes for the on/ off -->
 <body>
@@ -84,6 +85,7 @@ label {
         <p>Motions Detected</p>
         <p>Long Motions</p>
         <p>Short Motions</p>
+	<p>Intruder</p>
     </div>
   </ul>
 </nav>
@@ -99,8 +101,12 @@ label {
         <p style="padding-left:18px" id="motion">0</p>
         <p style="padding-left:18px" id="long">0</p>
         <p style="padding-left:18px" id="short">0</p>
+	<p style="padding-left:18px" id="intruder">0</p>
     </div>
 </aside>
+</div
+<div>
+	<button style="position: absolute; left:50%; font-size: 20px" type="btn" id="reset">Reset</button>
 </div>
 </div>
 
@@ -110,12 +116,40 @@ label {
 <script>
 
     $(function(){
-	var y = 1;
         var socket = io.connect();
         var $led = $('#led');
+	var $reset = $('#reset');
         var $pirmotion = $('#pirmotion');
 	var x = 1;
 	var y = 1;
+	var config = {
+	    apiKey: "AIzaSyBSQBvFpZO5Bt_OQo13439wr38D92chiEI",
+   	    authDomain: "project1-6d6ef.firebaseapp.com",
+   	    databaseURL: "https://project1-6d6ef.firebaseio.com",
+	    projectId: "project1-6d6ef",
+   	    storageBucket: "project1-6d6ef.appspot.com",
+   	    messagingSenderId: "181784416709"
+	};
+	firebase.initializeApp(config);
+	console.log(firebase);
+	var database = firebase.database();
+	var ref = database.ref('motion');
+	var pushresult = null;
+	
+
+	socket.on('start', function(data){
+		ref.on('value', function(snapshot){
+			var records = snapshot.val();
+			var keys = Object.keys(records);
+			var i = keys[0];
+			data[0] = records[i].Total;
+			data[1] = records[i].Long;
+			data[2] = records[i].Short;
+			data[3] = records[i].Intruder;
+			console.log(data);
+			socket.emit('startback', data);
+		});
+	});
 
 	$led.click(function(e){
             e.preventDefault();
@@ -130,11 +164,34 @@ label {
         });
 
 	socket.on('send data',function(data){
+	    var motion = {
+		Total: data[0],
+		Long: data[1],
+		Short: data[2],
+		Intruder: data[3]
+	    };	
+	    push(motion);
             document.getElementById("motion").innerHTML = data[0];
             document.getElementById("long").innerHTML = data[1];
             document.getElementById("short").innerHTML = data[2];
-        });
+            document.getElementById("intruder").innerHTML = data[3];
 
+        });
+	
+	function push(motion){
+		if (pushresult == null){
+			pushresult = ref.push(motion);
+		} else {
+			ref.remove();
+			pushresult = ref.push(motion);
+		}
+	}
+
+	document.getElementById("reset").onclick=function(e){
+		e.preventDefault();
+		ref.remove();
+		socket.emit('reset');
+	};
     });
 
 
