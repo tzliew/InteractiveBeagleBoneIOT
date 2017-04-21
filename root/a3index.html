@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+div.container {
+    width: 60%;
+    left: 20%;
+    border: 1px solid gray;
+    box-shadow: 1px 1px 1px 1px;
+}
+
+div.inside {
+    width: 80%;
+    margin-left: 60px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border: 1px solid gray;
+    box-shadow: 1px 1px 1px 1px;
+}
+
+div.controller {
+    width: 80%;
+    border: 1px solid gray;
+    margin-left: 50px;
+    margin-bottom: 30px;
+}
+
+p {
+    border-bottom: 1px solid gray;
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+header {
+    padding: 1em;
+    color: white;
+    background-color: purple;
+    clear: left;
+    text-align: center;
+}
+
+nav {
+    float: left;
+    max-width: 300px;
+    margin: 0;
+    padding: 1em;
+    margin-bottom: 20px;
+}
+
+
+aside {
+    margin-left: 300px;
+    border-left: 1px solid gray;
+    padding: 1em;
+    overflow: hidden;
+}
+
+label {
+    display: block;
+    width: 100px;
+    -webkit-transform: scale(2);
+}
+
+</style>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/3.7.5/firebase.js"></script>
+</head>
+<!-- the body of the HTML is used to print out a nice table with two check boxes for the on/ off -->
+<body>
+
+<div class="container">
+
+<header>
+   <h1>IoT Control Panel</h1>
+</header>
+<div class="inside">
+<h2 style="margin-left:50px">Control Panel</h2>
+<div class="controller">
+<nav>
+  <ul>
+    <div style="margin-bottom:10px">
+        <p>Switch LED On/Off</p>
+        <p>Switch PIR Motion Sensor On/Off</p>
+        <p>Motions Detected</p>
+        <p>Long Motions</p>
+        <p>Short Motions</p>
+	<p>Intruder</p>
+    </div>
+  </ul>
+</nav>
+
+<aside>
+    <div>
+        <p><label style="margin-left:55px">
+            <input type="checkbox" id="led">
+        </label></p>
+        <p><label style="margin-left:55px">
+            <input type="checkbox" id="pirmotion">
+        </label></p>
+        <p style="padding-left:18px" id="motion">0</p>
+        <p style="padding-left:18px" id="long">0</p>
+        <p style="padding-left:18px" id="short">0</p>
+	<p style="padding-left:18px" id="intruder">0</p>
+    </div>
+</aside>
+</div
+<div>
+	<button style="position: absolute; left:50%; font-size: 20px" type="btn" id="reset">Reset</button>
+</div>
+</div>
+
+</div>
+<!-- the scipt includes the function that required in assignment which is LED and PIR Motion Sensor ON/ OFF
+ and the number of motion detected -->
+<script>
+
+    $(function(){
+        var socket = io.connect();
+        var $led = $('#led');
+	var $reset = $('#reset');
+        var $pirmotion = $('#pirmotion');
+	var x = 1;
+	var y = 1;
+	var config = {
+	    apiKey: "AIzaSyBSQBvFpZO5Bt_OQo13439wr38D92chiEI",
+   	    authDomain: "project1-6d6ef.firebaseapp.com",
+   	    databaseURL: "https://project1-6d6ef.firebaseio.com",
+	    projectId: "project1-6d6ef",
+   	    storageBucket: "project1-6d6ef.appspot.com",
+   	    messagingSenderId: "181784416709"
+	};
+	firebase.initializeApp(config);
+	var database = firebase.database();
+	var ref = database.ref('motion');
+	var pushresult = null;
+	
+
+	socket.on('start', function(data){
+		ref.on('value', function(snapshot){
+			var records = snapshot.val();
+			var keys = Object.keys(records);
+			var i = keys[0];
+			data[0] = records[i].Total;
+			data[1] = records[i].Long;
+			data[2] = records[i].Short;
+			data[3] = records[i].Intruder;
+			console.log(data);
+			socket.emit('startback', data);
+		});
+	});
+
+	$led.click(function(e){
+            e.preventDefault();
+            socket.emit('led on', x);
+	    x *= -1;
+        });
+	
+	$pirmotion.click(function(e){
+            e.preventDefault();
+            socket.emit('motion on', y);
+            y *= -1;
+        });
+
+	socket.on('send data',function(data){
+	    var motion = {
+		Total: data[0],
+		Long: data[1],
+		Short: data[2],
+		Intruder: data[3]
+	    };
+	    console.log(data[4] + " VS " + new Date());
+	    push(motion);
+            document.getElementById("motion").innerHTML = data[0];
+            document.getElementById("long").innerHTML = data[1];
+            document.getElementById("short").innerHTML = data[2];
+            document.getElementById("intruder").innerHTML = data[3];
+
+        });
+	
+	function push(motion){
+		if (pushresult == null){
+			pushresult = ref.push(motion);
+		} else {
+			ref.remove();
+			pushresult = ref.push(motion);
+		}
+	}
+
+	document.getElementById("reset").onclick=function(e){
+		e.preventDefault();
+		ref.remove();
+		socket.emit('reset');
+	};
+    });
+
+
+</script>
+
+</body>
+</html>
+
